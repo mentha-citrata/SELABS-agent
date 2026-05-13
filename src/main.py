@@ -4,7 +4,7 @@
 """
 
 import sys
-from agent.agent import LabAgent
+from .agent.agent import LabAgent
 
 
 def print_welcome():

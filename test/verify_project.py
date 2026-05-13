@@ -6,8 +6,8 @@
 import sys
 import os
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# 添加项目根目录到 Python 路径（指向项目根目录）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def check_imports():
@@ -17,10 +17,10 @@ def check_imports():
     print("=" * 60)
     
     checks = [
-        ("config.api_config", "API 配置", ["APIConfig"]),
-        ("tools.tool_definitions", "工具定义", ["query_devices", "create_experiment", "TOOLS"]),
-        ("agent.state", "Agent 状态", ["AgentState"]),
-        ("utils.error_handler", "错误处理", ["handle_api_error", "handle_llm_error"]),
+        ("src.config.api_config", "API 配置", ["APIConfig"]),
+        ("src.tools.tool_definitions", "工具定义", ["query_devices", "create_experiment", "TOOLS"]),
+        ("src.agent.state", "Agent 状态", ["AgentState"]),
+        ("src.utils.error_handler", "错误处理", ["handle_api_error", "handle_llm_error"]),
     ]
     
     all_passed = True
@@ -65,20 +65,22 @@ def check_file_structure():
         "requirements.txt",
         ".env.example",
         "README.md",
-        "config/__init__.py",
-        "config/llm_config.py",
-        "config/api_config.py",
-        "tools/__init__.py",
-        "tools/tool_definitions.py",
-        "agent/__init__.py",
-        "agent/state.py",
-        "agent/agent.py",
-        "utils/__init__.py",
-        "utils/error_handler.py",
-        "main.py",
+        "src/__init__.py",
+        "src/config/__init__.py",
+        "src/config/llm_config.py",
+        "src/config/api_config.py",
+        "src/tools/__init__.py",
+        "src/tools/tool_definitions.py",
+        "src/agent/__init__.py",
+        "src/agent/state.py",
+        "src/agent/agent.py",
+        "src/utils/__init__.py",
+        "src/utils/error_handler.py",
+        "src/main.py",
     ]
     
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # 指向项目根目录而不是 test 目录
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     all_exist = True
     
     for file_path in required_files:
@@ -101,7 +103,7 @@ def check_tools():
     print("=" * 60)
     
     try:
-        from tools.tool_definitions import TOOLS
+        from src.tools.tool_definitions import TOOLS
         
         print(f"✓ 工具总数: {len(TOOLS)}")
         

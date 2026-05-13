@@ -3,8 +3,8 @@
 import sys
 import os
 
-# 项目路径
-project_root = os.path.dirname(os.path.abspath(__file__))
+# 项目路径（指向项目根目录）
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 
@@ -15,11 +15,11 @@ def test_imports():
     print("="*60)
     
     tests = [
-        ("config.api_config", "APIConfig"),
-        ("config.llm_config", "get_llm"),
-        ("agent.state", "AgentState"),
-        ("tools.tool_definitions", "TOOLS"),
-        ("utils.error_handler", "handle_api_error"),
+        ("src.config.api_config", "APIConfig"),
+        ("src.config.llm_config", "get_llm"),
+        ("src.agent.state", "AgentState"),
+        ("src.tools.tool_definitions", "TOOLS"),
+        ("src.utils.error_handler", "handle_api_error"),
     ]
     
     for module_name, item_name in tests:
@@ -41,7 +41,7 @@ def test_api_config():
     print("="*60)
     
     try:
-        from config.api_config import APIConfig
+        from src.config.api_config import APIConfig
         
         print(f"✓ BaseURL: {APIConfig.BASE_URL}")
         print(f"✓ Timeout: {APIConfig.TIMEOUT}s")
@@ -61,7 +61,7 @@ def test_tools():
     print("="*60)
     
     try:
-        from tools.tool_definitions import (
+        from src.tools.tool_definitions import (
             query_devices,
             query_experiments,
             create_experiment,
@@ -102,7 +102,7 @@ def test_agent_state():
     print("="*60)
     
     try:
-        from agent.state import AgentState
+        from src.agent.state import AgentState
         from langchain_core.messages import HumanMessage
         
         # 创建示例状态
@@ -131,7 +131,7 @@ def test_error_handler():
     print("="*60)
     
     try:
-        from utils.error_handler import handle_api_error, handle_llm_error
+        from src.utils.error_handler import handle_api_error, handle_llm_error
         
         # 测试 API 错误
         test_error = Exception("测试 API 错误")
@@ -158,6 +158,8 @@ def test_env_config():
     try:
         import os
         from dotenv import load_dotenv
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         
         # 加载 .env.example 作为示例
         load_dotenv('.env.example')
@@ -197,7 +199,7 @@ def test_agent_initialization():
             print("  (完整的 Agent 测试需要配置 DEEPSEEK_API_KEY)")
             return True
         
-        from agent.agent import LabAgent
+        from src.agent.agent import LabAgent
         
         print("正在初始化 Agent...")
         agent = LabAgent()

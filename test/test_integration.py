@@ -5,8 +5,8 @@ import os
 from unittest.mock import Mock, patch
 from typing import Any
 
-# 项目路径
-project_root = os.path.dirname(os.path.abspath(__file__))
+# 项目路径（指向项目根目录）
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 
@@ -17,7 +17,7 @@ def test_agent_graph_structure():
     print("="*60)
     
     try:
-        from agent.agent import LabAgent
+        from src.agent.agent import LabAgent
         from langgraph.graph import StateGraph
         from unittest.mock import MagicMock
         
@@ -54,7 +54,7 @@ def test_state_management():
     print("="*60)
     
     try:
-        from agent.state import AgentState
+        from src.agent.state import AgentState
         from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
         
         # 模拟对话状态
@@ -88,7 +88,7 @@ def test_tool_invocation():
     print("="*60)
     
     try:
-        from tools.tool_definitions import TOOLS
+        from src.tools.tool_definitions import TOOLS
         
         test_cases = [
             ("query_devices", {"device_id": "DEV-001"}),
@@ -127,7 +127,7 @@ def test_error_recovery():
     print("="*60)
     
     try:
-        from utils.error_handler import handle_api_error, handle_llm_error
+        from src.utils.error_handler import handle_api_error, handle_llm_error
         
         # 模拟各类错误
         test_errors = [
@@ -260,7 +260,7 @@ def test_configuration():
     print("="*60)
     
     try:
-        from config.api_config import APIConfig
+        from src.config.api_config import APIConfig
         import os
         
         # 检查 API 配置
@@ -288,7 +288,7 @@ def test_concurrent_tools():
     print("="*60)
     
     try:
-        from tools.tool_definitions import TOOLS
+        from src.tools.tool_definitions import TOOLS
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
         # 选择几个工具进行并行测试

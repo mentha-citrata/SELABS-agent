@@ -5,10 +5,10 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.tools import Tool
 
-from config.llm_config import get_llm
-from tools.tool_definitions import TOOLS
-from agent.state import AgentState
-from utils.error_handler import handle_api_error, handle_llm_error
+from ..config.llm_config import get_llm
+from ..tools.tool_definitions import TOOLS
+from .state import AgentState
+from ..utils.error_handler import handle_api_error, handle_llm_error
 
 
 class LabAgent:

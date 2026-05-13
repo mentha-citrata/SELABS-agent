@@ -1,235 +1,244 @@
-# 实验室管理 Agent（LangGraph 版本）
+# SELABS Agent - 实验室管理系统辅助 Agent
 
-基于 LangGraph 框架和 Python 实现的实验室管理系统辅助 Agent，采用 DeepSeek LLM 驱动。
+基于 LangGraph 框架和 DeepSeek LLM 的对话 Agent，用于实验室管理系统的智能助手。
 
-## 📋 项目结构
+## 📋 项目概述
+
+- **框架**: LangGraph + LangChain
+- **LLM**: DeepSeek 
+- **语言**: Python 3.12+
+- **架构**: ReAct（推理+执行）模式
+- **功能**: 多轮对话、工具调用、自动决策
+
+## 🏗️ 项目结构
 
 ```
 SELABS-agent/
-├── config/                      # 配置模块
+├── agent/                  # Agent 核心实现
 │   ├── __init__.py
-│   ├── llm_config.py           # DeepSeek LLM 配置
-│   └── api_config.py           # 实验室 API 配置
-├── tools/                       # 工具定义
+│   ├── state.py           # 状态定义
+│   └── agent.py           # ReAct Agent 实现
+├── config/                # 配置模块
 │   ├── __init__.py
-│   └── tool_definitions.py     # Agent 可用工具定义（占位符实现）
-├── agent/                       # Agent 核心逻辑
+│   ├── llm_config.py     # DeepSeek LLM 配置
+│   └── api_config.py     # 实验室 API 配置
+├── tools/                # 工具定义
 │   ├── __init__.py
-│   ├── state.py                # Agent 状态定义
-│   └── agent.py                # Agent 主体实现（ReAct 模式）
-├── utils/                       # 工具函数
+│   └── tool_definitions.py  # 6 个工具函数
+├── utils/                # 工具函数
 │   ├── __init__.py
-│   └── error_handler.py        # 错误处理模块
-├── main.py                      # 程序入口
-├── requirements.txt             # 项目依赖
-├── .env.example                 # 环境变量示例
-└── README.md                    # 此文件
+│   └── error_handler.py  # 错误处理
+├── test/                 # 测试套件
+│   ├── __init__.py
+│   ├── test_basic.py        # 基础功能测试 (7 用例)
+│   ├── test_integration.py  # 集成流程测试 (8 用例)
+│   ├── test_report.py       # 测试报告生成器
+│   └── verify_project.py    # 项目验证脚本
+├── doc/                  # 项目文档
+│   ├── __init__.py
+│   ├── README.md           # 项目详细说明
+│   ├── QUICKSTART.md       # 快速开始指南
+│   └── ARCHITECTURE.md     # 架构设计文档
+├── main.py              # CLI 入口程序
+├── examples.py          # 使用示例
+├── requirements.txt     # 依赖声明
+├── .env.example         # 环境变量模板
+├── .gitignore          # Git 忽略配置
+└── README.md           # 本文件
 ```
 
 ## 🚀 快速开始
 
 ### 1. 环境配置
 
-创建 `.env` 文件（基于 `.env.example`）：
-
 ```bash
+# 进入项目目录
+cd SELABS-agent
+
+# 复制环境变量模板
 cp .env.example .env
-```
 
-编辑 `.env` 并填入 DeepSeek API Key：
-
-```
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_MODEL=deepseek-chat
-LAB_API_BASE_URL=http://localhost:8000/api
-LAB_API_TIMEOUT=30
-AGENT_TEMPERATURE=0.7
-AGENT_MAX_TOKENS=2048
+# 编辑 .env，填入 DEEPSEEK_API_KEY
+# DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxx
 ```
 
 ### 2. 安装依赖
 
 ```bash
+# 激活虚拟环境
+source .venv/bin/activate
+
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-### 3. 运行 Agent
+### 3. 验证项目
 
-**交互式模式（推荐）**：
 ```bash
+# 运行项目验证
+python test/verify_project.py
+
+# 运行基础功能测试
+python test/test_basic.py
+
+# 运行集成测试
+python test/test_integration.py
+```
+
+### 4. 启动 Agent
+
+```bash
+# 交互模式
 python main.py
+
+# 单查询模式
+python main.py "查询设备"
 ```
 
-这将启动一个交互式命令行界面，支持多轮对话。
+## 📚 文档说明
 
-**单查询模式**：
+- **[doc/README.md](doc/README.md)** - 完整的项目说明和 API 文档
+- **[doc/QUICKSTART.md](doc/QUICKSTART.md)** - 5分钟快速开始指南
+- **[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)** - 详细的架构设计文档
+
+## 🧪 测试说明
+
+### 测试套件
+
+| 测试文件 | 用例数 | 说明 |
+|---------|--------|------|
+| test/test_basic.py | 7 | 基础功能测试 |
+| test/test_integration.py | 8 | 集成流程测试 |
+| test/test_report.py | - | 测试报告生成 |
+| test/verify_project.py | - | 项目结构验证 |
+
+### 运行测试
+
 ```bash
-python main.py "查询所有设备"
+# 基础功能测试
+python test/test_basic.py
+
+# 集成流程测试
+python test/test_integration.py
+
+# 生成测试报告
+python test/test_report.py
+
+# 项目结构验证
+python test/verify_project.py
 ```
 
-## 📚 技术架构
+## 💡 功能特性
 
-### Agent 工作流程
+### Agent 框架
+- ✓ ReAct（推理+执行）模式
+- ✓ 基于 LangGraph 的状态管理
+- ✓ 单轮和多轮对话支持
+- ✓ 自动工具调用和结果处理
 
-```
-user_input
-    ↓
-[Agent Node] → LLM 处理消息，判断是否需要工具调用
-    ↓
-    ├─→ 否 → [End Node] → 返回响应
-    │
-    └─→ 是 → [Tool Executor Node] → 执行工具
-         ↓
-         循环回 [Agent Node]
-```
+### 工具系统
+- ✓ 6 个预置工具（3 查询 + 3 创建/修改）
+- ✓ 占位符实现，支持后续扩展
+- ✓ 工具自动选择和并行调用
 
-### 核心组件
+### 交互模式
+- ✓ 交互式 CLI（支持多轮对话）
+- ✓ 单查询命令行模式
+- ✓ 编程接口（易于系统集成）
 
-- **LLM 配置** (`config/llm_config.py`): 
-  - 使用 LangChain 的 `ChatOpenAI` 连接 DeepSeek
-  - 支持自定义温度、token 限制
+## 📖 使用示例
 
-- **Agent 状态** (`agent/state.py`):
-  - 基于 `StateGraph` 的状态定义
-  - 维护消息历史用于多轮对话
+### 交互模式
 
-- **Agent 实现** (`agent/agent.py`):
-  - **agent_node**: LLM 思考节点，调用 LLM 处理消息
-  - **tool_executor_node**: 工具执行节点，运行选定的工具
-  - **end_node**: 结束节点，返回最终响应
-  - **条件判断**: 根据 LLM 输出决定是否调用工具
+```bash
+$ python main.py
 
-- **工具定义** (`tools/tool_definitions.py`):
-  - 6 个占位符工具函数（支持后续扩展）
-  - 包括查询类和创建/修改类操作
-  - 使用 `@tool` 装饰器便于 LLM 调用
+你: 查询设备
+Agent: [处理中...]
 
-## 🛠️ 可用工具（当前占位符实现）
+你: 帮我创建一个新实验
+Agent: [处理中...]
 
-### 查询工具
-- `query_devices()` - 查询设备信息
-- `query_experiments()` - 查询实验信息
-- `query_reservations()` - 查询完约信息
-
-### 创建/修改工具
-- `create_experiment()` - 创建新实验
-- `create_reservation()` - 创建设备预约
-- `update_experiment()` - 更新实验状态
-
-## 💬 对话示例
-
-```
-你: 查询一下有哪些设备
-Agent: 正在处理...
-Agent: [设备查询功能待实现] ...
-
-你: 帮我创建一个新的实验
-Agent: 正在处理...
-Agent: [实验创建功能待实现] ...
+你: quit
+再见!
 ```
 
-## 🔄 多轮对话支持
+### 编程使用
 
-Agent 支持维护对话上下文，示例：
+```python
+from agent.agent import LabAgent
+
+agent = LabAgent()
+
+# 单轮对话
+response = agent.run("查询设备")
+
+# 多轮对话
+messages = ["查询设备", "显微镜在哪里？"]
+response = agent.run_with_history(messages)
+```
+
+## 🔧 配置说明
+
+编辑 `.env` 文件配置以下环境变量：
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| DEEPSEEK_API_KEY | DeepSeek API 密钥 | 必需 |
+| DEEPSEEK_MODEL | LLM 模型名称 | deepseek-chat |
+| LAB_API_BASE_URL | 实验室 API 基础 URL | http://localhost:8000/api |
+| LAB_API_TIMEOUT | API 请求超时(秒) | 30 |
+| AGENT_TEMPERATURE | LLM 温度参数(0-1) | 0.7 |
+| AGENT_MAX_TOKENS | LLM 最大输出 token | 2048 |
+
+## 📊 测试结果
+
+最新测试（2026-05-13）：
 
 ```
-你: 查询设备列表
-Agent: [查询结果]
-
-你: 其中显微镜今天下午什么时候有空？
-Agent: [分析前面的查询结果，查询预约信息]
+基础功能测试: 7/7 ✓
+集成流程测试: 8/8 ✓
+项目结构验证: ✓
+------
+总计: 15/15 ✓
 ```
 
-## ⚙️ 配置说明
+详见 [test_report.py](test/test_report.py) 的完整报告。
 
-| 环境变量 | 说明 | 默认值 |
-|---------|------|--------|
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 必需 |
-| `DEEPSEEK_MODEL` | LLM 模型名称 | `deepseek-chat` |
-| `LAB_API_BASE_URL` | 实验室 API 基础 URL | `http://localhost:8000/api` |
-| `LAB_API_TIMEOUT` | API 请求超时时间（秒） | `30` |
-| `AGENT_TEMPERATURE` | LLM 温度参数（0-1） | `0.7` |
-| `AGENT_MAX_TOKENS` | LLM 最大输出 token 数 | `2048` |
-| `DEBUG` | 是否启用调试模式 | `False` |
+## 🛠️ 后续开发
 
-## 🔧 后续扩展指南
+### 实现真实 API 调用
 
-### 实现实际的 API 调用
-
-修改 `tools/tool_definitions.py` 中的工具函数，调用实际的 API：
+编辑 `tools/tool_definitions.py`，将占位符替换为实际 API 调用：
 
 ```python
 @tool
-def query_devices(device_id: Optional[str] = None) -> dict:
-    """查询设备信息"""
-    # 替换为实际 API 调用
-    from requests import get
-    response = get(f"{APIConfig.BASE_URL}/devices")
+def query_devices(...) -> dict:
+    """查询设备"""
+    response = requests.get(f"{APIConfig.BASE_URL}/devices")
     return response.json()
 ```
 
 ### 添加新工具
 
-在 `tools/tool_definitions.py` 中定义新工具，并添加到 `TOOLS` 列表：
+1. 在 `tools/tool_definitions.py` 中定义新工具
+2. 添加到 `TOOLS` 列表
+3. LLM 自动可用！
 
-```python
-@tool
-def new_tool(param: str) -> dict:
-    """新工具的说明"""
-    # 实现逻辑
-    pass
-
-TOOLS = [
-    # ... 现有工具
-    new_tool,
-]
-```
-
-### 完善错误处理
-
-在 `utils/error_handler.py` 中添加更详细的错误类型处理，替代通用错误消息。
-
-### 数据持久化
-
-添加数据库支持以保存对话历史和用户操作记录。
-
-## 📝 命令参考
-
-在交互模式下支持的特殊命令：
-
-- `quit` / `exit` - 退出程序
-- `clear` - 清空对话历史
-- `help` - 显示帮助信息
-
-## ⚠️ 注意事项
-
-1. **API 密钥安全**：
-   - 确保 `.env` 文件不被上传到版本控制
-   - 使用环境变量管理敏感信息
-
-2. **依赖版本**：
-   - 项目使用特定版本的 langgraph 和 langchain
-   - 更新依赖可能需要调整代码
-
-3. **多轮对话**：
-   - Agent 维护消息历史，长对话可能消耗更多 token
-   - 使用 `clear` 命令重置对话历史
-
-## 📞 故障排查
-
-### 问题：`DEEPSEEK_API_KEY 环境变量未设置`
-**解决**：确保 `.env` 文件存在且包含有效的 API Key
-
-### 问题：导入错误
-**解决**：确保所有依赖已安装：`pip install -r requirements.txt`
-
-### 问题：LLM 响应缓慢
-**解决**：检查网络连接和 DeepSeek API 服务状态
-
-## 📄 许可证
+## 📝 许可证
 
 待定
 
 ## 👥 贡献
 
 欢迎提交 Issue 和 Pull Request
+
+---
+
+**快速链接**：
+- 📖 [完整文档](doc/README.md)
+- 🚀 [快速开始](doc/QUICKSTART.md)
+- 🏗️ [架构设计](doc/ARCHITECTURE.md)
+- 🧪 [测试](test/)
+
+**需要帮助？** 查看 `doc/QUICKSTART.md` 或 `doc/README.md` 获取详细信息。
