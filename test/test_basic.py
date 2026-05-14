@@ -1,5 +1,6 @@
 """基础功能测试 - 不需要 API Key"""
 
+import json
 import sys
 import os
 
@@ -57,7 +58,7 @@ def test_api_config():
 def test_tools():
     """测试工具定义"""
     print("\n" + "="*60)
-    print("测试 3: 工具调用（占位符）")
+    print("测试 3: 工具调用")
     print("="*60)
     
     try:
@@ -65,8 +66,10 @@ def test_tools():
             query_devices,
             query_experiments,
             create_experiment,
+            reserve_seat,
             TOOLS
         )
+        from src.tools import tool_definitions as tools_module
         
         # 测试查询工具
         result1 = query_devices.invoke({"device_id": "DEV-001"})
@@ -81,6 +84,50 @@ def test_tools():
         })
         print(f"✓ create_experiment 调用成功")
         print(f"  返回: {result2}")
+
+        # 测试座位预约接口
+        original_urlopen = tools_module.urlopen
+
+        class DummyResponse:
+            def __init__(self, body):
+                self._body = body
+
+            def read(self):
+                return self._body.encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            captured["method"] = request.get_method()
+            captured["body"] = json.loads(request.data.decode("utf-8"))
+            return DummyResponse('{"code":0,"message":"ok"}')
+
+        tools_module.urlopen = fake_urlopen
+        try:
+            result3 = reserve_seat.invoke({
+                "seat_id": 12,
+                "user_id": 34,
+                "start_time": "2026-05-14 09:00:00",
+                "end_time": "2026-05-14 11:00:00",
+            })
+        finally:
+            tools_module.urlopen = original_urlopen
+
+        print("✓ reserve_seat 调用成功")
+        print(f"  请求 URL: {captured['url']}")
+        print(f"  请求方法: {captured['method']}")
+        print(f"  请求体: {captured['body']}")
+        print(f"  返回: {result3}")
+        assert captured["url"].endswith("/v1/reservation/reserve-seat")
+        assert captured["body"]["seatId"] == 12
+        assert captured["body"]["userId"] == 34
         
         # 验证工具列表
         print(f"✓ 工具总数: {len(TOOLS)}")

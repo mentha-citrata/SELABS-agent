@@ -1,133 +1,97 @@
 """工具定义模块 - 定义 Agent 可用的工具（预留接口）"""
 
+import json
 from typing import Any, Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
 from langchain_core.tools import tool
 
-
-@tool
-def query_devices(device_id: Optional[str] = None, device_type: Optional[str] = None) -> dict:
-    """查询设备信息
-    
-    Args:
-        device_id: 可选，设备ID
-        device_type: 可选，设备类型
-        
-    Returns:
-        dict: 设备信息查询结果
-    """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "设备查询功能待实现",
-        "query_params": {"device_id": device_id, "device_type": device_type}
-    }
+from ..config.api_config import APIConfig
+from ..utils.error_handler import handle_api_error
 
 
-@tool
-def query_experiments(experiment_id: Optional[str] = None, status: Optional[str] = None) -> dict:
-    """查询实验信息
-    
-    Args:
-        experiment_id: 可选，实验ID
-        status: 可选，实验状态 (如: 'running', 'completed', 'pending')
-        
-    Returns:
-        dict: 实验信息查询结果
-    """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "实验查询功能待实现",
-        "query_params": {"experiment_id": experiment_id, "status": status}
-    }
+def _post_json(path: str, payload: dict[str, Any]) -> dict:
+    """向后端发送 JSON POST 请求。"""
+    url = f"{APIConfig.BASE_URL.rstrip('/')}/{path.lstrip('/')}"
+    data = json.dumps(payload).encode("utf-8")
+    request = Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
 
+    try:
+        with urlopen(request, timeout=APIConfig.TIMEOUT) as response:
+            raw_body = response.read().decode("utf-8")
+            if not raw_body:
+                return {
+                    "status": "success",
+                    "message": "请求成功，但未返回内容",
+                    "request": payload,
+                }
 
-@tool
-def query_reservations(user_id: Optional[str] = None, device_id: Optional[str] = None) -> dict:
-    """查询预约信息
-    
-    Args:
-        user_id: 可选，用户ID
-        device_id: 可选，设备ID
-        
-    Returns:
-        dict: 预约信息查询结果
-    """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "预约查询功能待实现",
-        "query_params": {"user_id": user_id, "device_id": device_id}
-    }
+            try:
+                response_body = json.loads(raw_body)
+            except json.JSONDecodeError:
+                response_body = raw_body
 
-
-@tool
-def create_experiment(name: str, description: str, device_id: str) -> dict:
-    """创建新的实验
-    
-    Args:
-        name: 实验名称
-        description: 实验描述
-        device_id: 设备ID
-        
-    Returns:
-        dict: 创建结果
-    """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "实验创建功能待实现",
-        "params": {"name": name, "description": description, "device_id": device_id}
-    }
+            return {
+                "status": "success",
+                "message": "请求成功",
+                "request": payload,
+                "response": response_body,
+            }
+    except HTTPError as error:
+        error_body = error.read().decode("utf-8", errors="ignore")
+        return {
+            "status": "error",
+            "message": handle_api_error(error),
+            "http_status": error.code,
+            "details": error_body or str(error),
+            "request": payload,
+        }
+    except URLError as error:
+        return {
+            "status": "error",
+            "message": handle_api_error(error),
+            "details": str(error),
+            "request": payload,
+        }
+    except Exception as error:
+        return {
+            "status": "error",
+            "message": handle_api_error(error),
+            "details": str(error),
+            "request": payload,
+        }
 
 
 @tool
-def create_reservation(user_id: str, device_id: str, start_time: str, end_time: str) -> dict:
-    """创建设备预约
-    
+def reserve_seat(seat_id: int, user_id: int, start_time: str, end_time: str) -> dict:
+    """预约座位
+
+    对应接口: POST /v1/reservation/reserve-seat
+
     Args:
-        user_id: 用户ID
-        device_id: 设备ID
-        start_time: 开始时间 (格式: YYYY-MM-DD HH:MM:SS)
-        end_time: 结束时间 (格式: YYYY-MM-DD HH:MM:SS)
-        
+        seat_id: 座位 ID
+        user_id: 用户 ID
+        start_time: 开始时间，建议格式 YYYY-MM-DD HH:MM:SS
+        end_time: 结束时间，建议格式 YYYY-MM-DD HH:MM:SS
+
     Returns:
-        dict: 预约创建结果
+        dict: 座位预约结果
     """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "预约创建功能待实现",
-        "params": {"user_id": user_id, "device_id": device_id, "start_time": start_time, "end_time": end_time}
+    payload = {
+        "seatId": seat_id,
+        "userId": user_id,
+        "startTime": start_time,
+        "endTime": end_time,
     }
-
-
-@tool
-def update_experiment(experiment_id: str, status: str, notes: Optional[str] = None) -> dict:
-    """更新实验状态
-    
-    Args:
-        experiment_id: 实验ID
-        status: 新的状态
-        notes: 可选，备注
-        
-    Returns:
-        dict: 更新结果
-    """
-    # 占位符实现 - 后续实现具体的 API 调用
-    return {
-        "status": "pending",
-        "message": "实验更新功能待实现",
-        "params": {"experiment_id": experiment_id, "status": status, "notes": notes}
-    }
-
+    return _post_json("/v1/reservation/reserve-seat", payload)
 
 # 导出所有工具供 Agent 使用
 TOOLS = [
-    query_devices,
-    query_experiments,
-    query_reservations,
-    create_experiment,
-    create_reservation,
-    update_experiment,
+    reserve_seat,
 ]
