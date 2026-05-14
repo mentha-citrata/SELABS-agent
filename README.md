@@ -14,37 +14,37 @@
 
 ```
 SELABS-agent/
-├── agent/                  # Agent 核心实现
+├── src/                   # 运行时代码
+│   ├── agent/             # Agent 核心实现
+│   │   ├── __init__.py
+│   │   ├── state.py       # 状态定义
+│   │   └── agent.py       # ReAct Agent 实现
+│   ├── config/            # 配置模块
+│   │   ├── __init__.py
+│   │   ├── llm_config.py  # DeepSeek LLM 配置
+│   │   └── api_config.py  # 实验室 API 配置
+│   ├── tools/             # 工具定义
+│   │   ├── __init__.py
+│   │   └── tool_definitions.py
+│   ├── utils/             # 公共工具
+│   │   ├── __init__.py
+│   │   └── error_handler.py
+│   └── main.py            # CLI 入口（可通过 `python src/main.py` 启动）
+├── examples.py            # 使用示例（仓库根目录，可直接运行）
+├── test/                  # 测试套件
 │   ├── __init__.py
-│   ├── state.py           # 状态定义
-│   └── agent.py           # ReAct Agent 实现
-├── config/                # 配置模块
-│   ├── __init__.py
-│   ├── llm_config.py     # DeepSeek LLM 配置
-│   └── api_config.py     # 实验室 API 配置
-├── tools/                # 工具定义
-│   ├── __init__.py
-│   └── tool_definitions.py  # 6 个工具函数
-├── utils/                # 工具函数
-│   ├── __init__.py
-│   └── error_handler.py  # 错误处理
-├── test/                 # 测试套件
-│   ├── __init__.py
-│   ├── test_basic.py        # 基础功能测试 (7 用例)
-│   ├── test_integration.py  # 集成流程测试 (8 用例)
-│   ├── test_report.py       # 测试报告生成器
-│   └── verify_project.py    # 项目验证脚本
-├── doc/                  # 项目文档
-│   ├── __init__.py
-│   ├── README.md           # 项目详细说明
-│   ├── QUICKSTART.md       # 快速开始指南
-│   └── ARCHITECTURE.md     # 架构设计文档
-├── main.py              # CLI 入口程序
-├── examples.py          # 使用示例
-├── requirements.txt     # 依赖声明
-├── .env.example         # 环境变量模板
-├── .gitignore          # Git 忽略配置
-└── README.md           # 本文件
+│   ├── test_basic.py
+│   ├── test_integration.py
+│   ├── test_report.py
+│   └── verify_project.py
+├── doc/                   # 项目文档
+│   ├── README.md
+│   ├── QUICKSTART.md
+│   └── ARCHITECTURE.md
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
 ## 🚀 快速开始
@@ -89,10 +89,13 @@ python test/test_integration.py
 
 ```bash
 # 交互模式
-python main.py
+python src/main.py
 
 # 单查询模式
-python main.py "查询设备"
+python src/main.py "查询设备"
+
+# 查看使用示例（仓库根目录）
+python examples.py
 ```
 
 ## 📚 文档说明
@@ -137,7 +140,7 @@ python test/verify_project.py
 - ✓ 自动工具调用和结果处理
 
 ### 工具系统
-- ✓ 6 个预置工具（3 查询 + 3 创建/修改）
+- ✓ 1 个预置工具（座位预约）
 - ✓ 占位符实现，支持后续扩展
 - ✓ 工具自动选择和并行调用
 
@@ -166,7 +169,7 @@ Agent: [处理中...]
 ### 编程使用
 
 ```python
-from agent.agent import LabAgent
+from src.agent.agent import LabAgent
 
 agent = LabAgent()
 

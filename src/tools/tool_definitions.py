@@ -92,6 +92,58 @@ def reserve_seat(seat_id: int, user_id: int, start_time: str, end_time: str) -> 
     return _post_json("/v1/reservation/reserve-seat", payload)
 
 # 导出所有工具供 Agent 使用
+@tool
+def query_devices() -> dict:
+    """查询设备列表（占位）。"""
+    return {"status": "success", "data": [], "message": "query_devices 占位实现"}
+
+
+@tool
+def query_experiments() -> dict:
+    """查询实验列表（占位）。"""
+    return {"status": "success", "data": [], "message": "query_experiments 占位实现"}
+
+
+@tool
+def query_reservations() -> dict:
+    """查询预约记录（占位）。"""
+    return {"status": "success", "data": [], "message": "query_reservations 占位实现"}
+
+
+@tool
+def create_experiment(name: str, metadata: Optional[dict] = None) -> dict:
+    """创建实验（占位）。"""
+    return {
+        "status": "success",
+        "experiment": {"id": 0, "name": name, "metadata": metadata or {}},
+        "message": "create_experiment 占位实现",
+    }
+
+
+@tool
+def create_reservation(device_id: int, user_id: int, start_time: str, end_time: str) -> dict:
+    """兼容旧接口的预约封装，内部调用 `reserve_seat`。"""
+    # 将 device_id 映射为 seat_id（占位逻辑）
+    seat_id = device_id
+    return reserve_seat(seat_id, user_id, start_time, end_time)
+
+
+@tool
+def update_experiment(experiment_id: int, updates: dict) -> dict:
+    """更新实验（占位）。"""
+    return {
+        "status": "success",
+        "experiment": {"id": experiment_id, **(updates or {})},
+        "message": "update_experiment 占位实现",
+    }
+
+
 TOOLS = [
+    query_devices,
+    query_experiments,
+    query_reservations,
+    create_experiment,
+    create_reservation,
+    update_experiment,
     reserve_seat,
 ]

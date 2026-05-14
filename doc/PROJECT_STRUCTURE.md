@@ -64,7 +64,7 @@ SELABS-agent/
 test/
 ├── README.md              # 📖 测试说明文档
 ├── test_basic.py          # 基础功能测试
-├── test_integration.py    # 集成流程测试
+├── test_integration.py    # 集成测试
 ├── test_report.py         # 测试报告生成
 └── verify_project.py      # 项目验证脚本
 ```
