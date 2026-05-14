@@ -1,6 +1,9 @@
 """示例脚本 - 演示如何使用 SELABS Agent。"""
 
-from .agent.agent import LabAgent
+try:
+    from .agent.agent import LabAgent
+except ImportError:
+    from src.agent.agent import LabAgent
 
 
 def example_1_single_query():
