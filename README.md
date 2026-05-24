@@ -1,247 +1,202 @@
-# SELABS Agent - 实验室管理系统辅助 Agent
+# SELABS Agent
 
-基于 LangGraph 框架和 DeepSeek LLM 的对话 Agent，用于实验室管理系统的智能助手。
+SELABS Agent 是一个面向实验室管理系统的对话式助手原型。当前后端基于 LangGraph + LangChain 构建 ReAct 风格 Agent，使用 DeepSeek 的 OpenAI 兼容接口作为 LLM，并通过 LangChain tools 封装实验室管理系统的 HTTP API。
 
-## 📋 项目概述
+## 项目现状
 
-- **框架**: LangGraph + LangChain
-- **LLM**: DeepSeek 
-- **语言**: Python 3.12+
-- **架构**: ReAct（推理+执行）模式
-- **功能**: 多轮对话、工具调用、自动决策
+当前仓库已经不再是早期的“6 个占位工具”版本，运行时代码已扩展为更完整的 API 工具层：
 
-## 🏗️ 项目结构
+- Agent 核心：`src/agent/agent.py` 使用 `StateGraph` 组织 LLM 节点、工具执行节点和结束节点。
+- LLM 配置：`src/config/llm_config.py` 通过 `ChatOpenAI` 连接 DeepSeek，读取 `.env` 中的模型、温度和 token 配置。
+- API 工具：`src/tools/tool_definitions.py` 定义了 87 个 `@tool`，覆盖登录、机位预约、教室预约、设备/耗材、借用记录、用户、报修、统计、巡查、数据中心申请与审批等接口。
+- 会话认证：工具层使用 `contextvars` 保存会话上下文；除登录接口外，默认要求已认证后才调用后端业务接口。
+- 交互入口：支持 CLI 单轮/多轮对话、编程调用，以及一个 FastAPI + SSE 的最小 Web 原型。
+- 前端原型：`web/` 是 FastAPI 静态页面；`web/vue/` 是独立 Vue/Vite 原型。
 
-```
+需要注意：部分历史文档和测试仍引用早期的 `query_devices`、`create_experiment` 等旧工具名，已经落后于当前工具层。本文档按当前代码现状更新。
+
+## 目录结构
+
+```text
 SELABS-agent/
-├── src/                   # 运行时代码
-│   ├── agent/             # Agent 核心实现
-│   │   ├── __init__.py
-│   │   ├── state.py       # 状态定义
-│   │   └── agent.py       # ReAct Agent 实现
-│   ├── config/            # 配置模块
-│   │   ├── __init__.py
-│   │   ├── llm_config.py  # DeepSeek LLM 配置
-│   │   └── api_config.py  # 实验室 API 配置
-│   ├── tools/             # 工具定义
-│   │   ├── __init__.py
-│   │   └── tool_definitions.py
-│   ├── utils/             # 公共工具
-│   │   ├── __init__.py
-│   │   └── error_handler.py
-│   └── main.py            # CLI 入口（可通过 `python src/main.py` 启动）
-├── examples.py            # 使用示例（仓库根目录，可直接运行）
-├── test/                  # 测试套件
-│   ├── __init__.py
-│   ├── test_basic.py
-│   ├── test_integration.py
-│   ├── test_report.py
-│   └── verify_project.py
-├── doc/                   # 项目文档
-│   ├── README.md
-│   ├── QUICKSTART.md
-│   └── ARCHITECTURE.md
+├── src/
+│   ├── __main__.py              # 支持 python3 -m src
+│   ├── main.py                  # CLI 入口
+│   ├── webserver.py             # FastAPI + SSE Web 原型
+│   ├── agent/
+│   │   ├── agent.py             # LabAgent / LangGraph 工作流
+│   │   └── state.py             # AgentState，会话和认证字段
+│   ├── config/
+│   │   ├── api_config.py        # 后端 API 地址、超时、DEBUG
+│   │   └── llm_config.py        # DeepSeek / ChatOpenAI 配置
+│   ├── tools/
+│   │   └── tool_definitions.py  # 87 个 LangChain tool + HTTP 请求封装
+│   └── utils/
+│       └── error_handler.py
+├── web/                         # 最小 HTML/SSE 前端
+├── web/vue/                     # Vue/Vite 前端原型
+├── test/                        # 测试与验证脚本，部分脚本需同步更新
+├── doc/                         # 补充文档
+├── examples.py                  # 编程调用示例
 ├── requirements.txt
 ├── .env.example
-├── .gitignore
 └── README.md
 ```
 
-## 🚀 快速开始
+## 快速开始
 
-### 1. 环境配置
+更详细的步骤见 [doc/QUICKSTART.md](doc/QUICKSTART.md)。
 
 ```bash
-# 进入项目目录
 cd SELABS-agent
 
-# 复制环境变量模板
-cp .env.example .env
-
-# 编辑 .env，填入 DEEPSEEK_API_KEY
-# DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxx
-```
-
-### 2. 安装依赖
-
-```bash
-# 激活虚拟环境
+python3 -m venv .venv
 source .venv/bin/activate
 
-# 安装依赖
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### 3. 验证项目
+编辑 `.env`，至少填入：
+
+```env
+DEEPSEEK_API_KEY=sk-your-key
+DEEPSEEK_MODEL=deepseek-chat
+LAB_API_BASE_URL=http://localhost:8000/api
+LAB_API_TIMEOUT=30
+AGENT_TEMPERATURE=0.7
+AGENT_MAX_TOKENS=2048
+DEBUG=False
+```
+
+启动 CLI：
 
 ```bash
-# 运行项目验证
-python test/verify_project.py
-
-# 运行基础功能测试
-python test/test_basic.py
-
-# 运行集成测试
-python test/test_integration.py
+python3 -m src
 ```
 
-### 4. 启动 Agent
+单次查询：
 
 ```bash
-# 交互模式
-python src/main.py
-
-# 单查询模式
-python src/main.py "查询设备"
-
-# 查看使用示例（仓库根目录）
-python examples.py
+python3 -m src "查询可用机位"
 ```
 
-## 📚 文档说明
-
-- **[doc/README.md](doc/README.md)** - 完整的项目说明和 API 文档
-- **[doc/QUICKSTART.md](doc/QUICKSTART.md)** - 5分钟快速开始指南
-- **[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)** - 详细的架构设计文档
-
-## 🧪 测试说明
-
-### 测试套件
-
-| 测试文件 | 用例数 | 说明 |
-|---------|--------|------|
-| test/test_basic.py | 7 | 基础功能测试 |
-| test/test_integration.py | 8 | 集成流程测试 |
-| test/test_report.py | - | 测试报告生成 |
-| test/verify_project.py | - | 项目结构验证 |
-
-### 运行测试
+启动最小 Web 原型：
 
 ```bash
-# 基础功能测试
-python test/test_basic.py
-
-# 集成流程测试
-python test/test_integration.py
-
-# 生成测试报告
-python test/test_report.py
-
-# 项目结构验证
-python test/verify_project.py
+python3 -m uvicorn src.webserver:app --reload --host 127.0.0.1 --port 8001
 ```
 
-## 💡 功能特性
+然后访问 `http://127.0.0.1:8001`。
 
-### Agent 框架
-- ✓ ReAct（推理+执行）模式
-- ✓ 基于 LangGraph 的状态管理
-- ✓ 单轮和多轮对话支持
-- ✓ 自动工具调用和结果处理
+## 运行模式
 
-### 工具系统
-- ✓ 1 个预置工具（座位预约）
-- ✓ 占位符实现，支持后续扩展
-- ✓ 工具自动选择和并行调用
+### CLI
 
-### 交互模式
-- ✓ 交互式 CLI（支持多轮对话）
-- ✓ 单查询命令行模式
-- ✓ 编程接口（易于系统集成）
+`src/main.py` 提供两种模式：
 
-## 📖 使用示例
+- 不带参数：进入交互模式，支持 `help`、`clear`、`quit` / `exit`。
+- 带参数：把命令行参数拼成一次用户查询，返回 Agent 响应。
 
-### 交互模式
+推荐使用模块方式运行：
 
 ```bash
-$ python main.py
-
-你: 查询设备
-Agent: [处理中...]
-
-你: 帮我创建一个新实验
-Agent: [处理中...]
-
-你: quit
-再见!
+python3 -m src
+python3 -m src "帮我查看我的预约"
 ```
 
-### 编程使用
+### 编程调用
 
 ```python
 from src.agent.agent import LabAgent
 
 agent = LabAgent()
 
-# 单轮对话
-response = agent.run("查询设备")
+response = agent.run("查询教室列表")
+print(response)
 
-# 多轮对话
-messages = ["查询设备", "显微镜在哪里？"]
-response = agent.run_with_history(messages)
+response = agent.run_with_history([
+    "查询教室列表",
+    "这里是上一轮回复",
+    "帮我看一下哪个教室今天下午可用",
+])
+print(response)
 ```
 
-## 🔧 配置说明
+### Web 原型
 
-编辑 `.env` 文件配置以下环境变量：
+`src/webserver.py` 提供：
+
+- `POST /api/agent/session`：创建内存会话。
+- `POST /api/agent/send`：发送用户消息，后台运行 Agent。
+- `GET /api/agent/stream`：通过 SSE 返回分片响应。
+- `/` 和 `/chat.js`：提供 `web/index.html` 对应的最小聊天页面。
+
+该 Web 实现是原型：会话保存在内存中，流式输出目前是 `run()` 完整响应后的定长切片，不是 LLM 原生流式回调。
+
+## 工具与后端接口
+
+工具层集中在 `src/tools/tool_definitions.py`，公共请求函数包括：
+
+- `_request_json(method, path, params=None, payload=None)`
+- `_get_json(path, params=None)`
+- `_post_json(path, payload)`
+- `_delete_json(path, params=None)`
+
+当前工具覆盖的主要领域：
+
+- 登录与用户信息：`login_user`、`get_user_info_by_id`、`search_user` 等。
+- 机位预约：查询房间、可用机位、用户预约、取消预约等。
+- 教室预约：预约教室、查询教室状态、预约记录、教室列表等。
+- 设备/耗材：设备列表、设备详情、耗材列表、耗材详情等。
+- 设备借用：未归还/处理中/已完成记录、可借用设备、记录统计等。
+- 报修：个人/全部报修记录、图片、结果、反馈等。
+- 统计与巡查：工位、耗材、设备、教室、用户、报修、巡查记录等统计接口。
+- 数据中心申请与审批：申请详情、服务器注册/修改申请、审批信息等。
+
+认证策略：
+
+- `/v1/user/login` 是白名单。
+- 其他工具请求默认要求会话已登录，否则直接返回 401 风格错误，不向后端发请求。
+- Web 模式会把登录工具写入的认证信息同步回内存会话。
+
+## 配置
 
 | 变量 | 说明 | 默认值 |
-|------|------|--------|
-| DEEPSEEK_API_KEY | DeepSeek API 密钥 | 必需 |
-| DEEPSEEK_MODEL | LLM 模型名称 | deepseek-chat |
-| LAB_API_BASE_URL | 实验室 API 基础 URL | http://localhost:8000/api |
-| LAB_API_TIMEOUT | API 请求超时(秒) | 30 |
-| AGENT_TEMPERATURE | LLM 温度参数(0-1) | 0.7 |
-| AGENT_MAX_TOKENS | LLM 最大输出 token | 2048 |
+| --- | --- | --- |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key | 必填 |
+| `DEEPSEEK_MODEL` | DeepSeek 模型名 | `deepseek-chat` |
+| `LAB_API_BASE_URL` | 实验室管理系统 API 基础地址 | `http://localhost:8000/api` |
+| `LAB_API_TIMEOUT` | 后端 API 超时秒数 | `30` |
+| `AGENT_TEMPERATURE` | LLM 温度 | `0.7` |
+| `AGENT_MAX_TOKENS` | LLM 最大输出 token | `2048` |
+| `DEBUG` | 本地调试开关 | `False` |
 
-## 📊 测试结果
+## 验证与已知问题
 
-最新测试（2026-05-13）：
+建议先安装依赖后再验证：
 
-```
-基础功能测试: 7/7 ✓
-集成流程测试: 8/8 ✓
-项目结构验证: ✓
-------
-总计: 15/15 ✓
-```
-
-详见 [test_report.py](test/test_report.py) 的完整报告。
-
-## 🛠️ 后续开发
-
-### 实现真实 API 调用
-
-编辑 `tools/tool_definitions.py`，将占位符替换为实际 API 调用：
-
-```python
-@tool
-def query_devices(...) -> dict:
-    """查询设备"""
-    response = requests.get(f"{APIConfig.BASE_URL}/devices")
-    return response.json()
+```bash
+python3 -m pip install -r requirements.txt
+python3 test/verify_project.py
+python3 test/test_auth.py
 ```
 
-### 添加新工具
+当前观察到的风险：
 
-1. 在 `tools/tool_definitions.py` 中定义新工具
-2. 添加到 `TOOLS` 列表
-3. LLM 自动可用！
+- 未安装依赖时，验证会因 `python-dotenv`、`langchain_core`、`langgraph` 缺失失败。
+- `test/verify_project.py`、`test/test_basic.py`、`test/test_integration.py` 仍包含旧工具名断言，需要同步到当前 87 个工具的实现。
+- `src/config/api_config.py` 中的 `ENDPOINTS` 字段仍是早期分类占位，不代表当前完整接口清单。
+- `doc/ARCHITECTURE.md`、`doc/INDEX.md`、`test/README.md` 仍可能保留早期描述，阅读时以当前源码和本 README 为准。
 
-## 📝 许可证
+## 后续建议
 
-待定
+1. 同步测试：把旧工具名测试改为当前工具，例如 `login_user`、`reserve_seat`、`get_room_names`，并对认证门禁做明确断言。
+2. 增加真实后端契约测试：用 mock HTTP 层校验 path、method、query/body 和 Authorization header。
+3. 梳理工具分组：将 87 个工具按业务域拆分文件，降低 `tool_definitions.py` 的维护成本。
+4. 改造真实流式：如果 DeepSeek/LangChain 配置支持 streaming，可替换当前固定字符切片实现。
+5. 明确 Python 版本与包管理：补充 `pyproject.toml` 或锁定依赖版本，减少本地环境差异。
 
-## 👥 贡献
+## 许可证
 
-欢迎提交 Issue 和 Pull Request
-
----
-
-**快速链接**：
-- 📖 [完整文档](doc/README.md)
-- 🚀 [快速开始](doc/QUICKSTART.md)
-- 🏗️ [架构设计](doc/ARCHITECTURE.md)
-- 🧪 [测试](test/)
-
-**需要帮助？** 查看 `doc/QUICKSTART.md` 或 `doc/README.md` 获取详细信息。
+待定。
