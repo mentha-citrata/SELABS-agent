@@ -217,3 +217,18 @@ class LabAgent:
                 return msg.content
         
         return "无法获取响应"
+
+    def run_stream(self, user_message: str, chunk_size: int = 20):
+        """流式运行 Agent（同步生成器）
+
+        说明：当前实现为原型，先使用 `run` 获取完整响应，再按固定 `chunk_size` 切分并逐片返回。
+        若后端 LLM 支持原生流式回调，可替换为真实流式实现。
+
+        Yields:
+            str: 响应片段
+        """
+        full = self.run(user_message)
+
+        # 简单按字符切分为多段
+        for i in range(0, len(full), chunk_size):
+            yield full[i : i + chunk_size]
