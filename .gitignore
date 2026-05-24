@@ -1,3 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Node/Vue
+/web/vue/node_modules/
+/web/vue/dist/
+/web/vue/build/
+/web/vue/.env
+
+# Logs
+logs/
+*.log
+
+# Virtual env in project
+.venv/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# dotenv
+.env
+.env.*
+
 # 环境
 .env
 .env.local

@@ -12,12 +12,13 @@ import asyncio
 import json
 from pathlib import Path
 import uuid
-from typing import Dict
+from typing import Dict, Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 
 from .agent.agent import LabAgent
+from .tools.tool_definitions import get_session_context
 
 app = FastAPI(title="SELABS Agent Web Prototype")
 
@@ -33,8 +34,8 @@ async def index():
 async def chat_js():
     return FileResponse(WEB_DIR / "chat.js")
 
-# 简易内存会话存储：session_id -> asyncio.Queue
-SESSIONS: Dict[str, asyncio.Queue] = {}
+# 会话结构：session_id -> {queue: asyncio.Queue, auth: {...}}
+SESSIONS: Dict[str, Dict[str, Any]] = {}
 
 # 单例 Agent
 AGENT = LabAgent()
@@ -43,8 +44,31 @@ AGENT = LabAgent()
 @app.post("/api/agent/session")
 async def create_session():
     session_id = str(uuid.uuid4())
-    SESSIONS[session_id] = asyncio.Queue()
+    SESSIONS[session_id] = {
+        "queue": asyncio.Queue(),
+        "auth": {
+            "is_authenticated": False,
+            "user_id": None,
+            "user_number": None,
+            "auth_token": None,
+        }
+    }
     return JSONResponse({"session_id": session_id})
+
+
+def _sync_session_auth(session_id: str):
+    """从 contextvars 上下文同步会话认证信息回 SESSIONS 存储
+    
+    这用于同步工具执行中对认证信息的更新（例如登录工具更新的令牌信息）
+    """
+    if session_id not in SESSIONS:
+        return
+    
+    session_context = get_session_context()
+    if session_context and session_context.get("session_id") == session_id:
+        auth_info = session_context.get("auth_info", {})
+        if auth_info:
+            SESSIONS[session_id]["auth"].update(auth_info)
 
 
 @app.post("/api/agent/send")
@@ -59,18 +83,23 @@ async def send_message(payload: Request):
     if not message:
         raise HTTPException(status_code=400, detail="message required")
 
-    queue = SESSIONS[session_id]
+    session_data = SESSIONS[session_id]
+    queue = session_data["queue"]
+    auth_info = session_data["auth"]
 
     # 在后台任务中运行 Agent 的流式生成器并将片段放入队列
     async def _run_and_push():
         loop = asyncio.get_running_loop()
 
         def gen():
-            for chunk in AGENT.run_stream(message):
+            for chunk in AGENT.run_stream(message, session_id=session_id, auth_info=auth_info):
                 yield chunk
 
         for piece in await loop.run_in_executor(None, lambda: list(gen())):
             await queue.put({"data": piece})
+
+        # 同步认证信息回 SESSIONS（在 Agent 执行完成后）
+        _sync_session_auth(session_id)
 
         # 标记结束
         await queue.put({"done": True})
@@ -85,7 +114,8 @@ async def stream(session_id: str):
     if session_id not in SESSIONS:
         raise HTTPException(status_code=400, detail="invalid session_id")
 
-    queue = SESSIONS[session_id]
+    session_data = SESSIONS[session_id]
+    queue = session_data["queue"]
 
     async def event_generator():
         try:

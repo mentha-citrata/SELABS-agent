@@ -6,7 +6,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMe
 from langchain_core.tools import Tool
 
 from ..config.llm_config import get_llm
-from ..tools.tool_definitions import TOOLS
+from ..tools.tool_definitions import TOOLS, set_session_context
 from .state import AgentState
 from ..utils.error_handler import handle_api_error, handle_llm_error
 
@@ -159,18 +159,29 @@ class LabAgent:
         """
         return state
     
-    def run(self, user_message: str) -> str:
+    def run(self, user_message: str, session_id: str = None, auth_info: dict = None) -> str:
         """运行 Agent - 处理用户输入并返回响应
         
         Args:
             user_message: 用户输入的消息
+            session_id: Web 会话 ID，可选
+            auth_info: 会话认证信息（包含 is_authenticated, user_id, user_number, auth_token），可选
             
         Returns:
             str: Agent 的响应
         """
-        # 创建初始状态
-        initial_state = {
-            "messages": [HumanMessage(content=user_message)]
+        # 设置会话上下文供工具使用（使用 contextvars，线程安全）
+        if session_id:
+            set_session_context(session_id, auth_info or {})
+        
+        # 创建初始状态，包含会话信息
+        initial_state: AgentState = {
+            "messages": [HumanMessage(content=user_message)],
+            "session_id": session_id or "",
+            "is_authenticated": auth_info.get("is_authenticated", False) if auth_info else False,
+            "user_id": auth_info.get("user_id") if auth_info else None,
+            "user_number": auth_info.get("user_number") if auth_info else None,
+            "auth_token": auth_info.get("auth_token") if auth_info else None,
         }
         
         # 运行 Agent
@@ -218,16 +229,23 @@ class LabAgent:
         
         return "无法获取响应"
 
-    def run_stream(self, user_message: str, chunk_size: int = 20):
+    def run_stream(self, user_message: str, session_id: str = None, auth_info: dict = None, chunk_size: int = 20):
         """流式运行 Agent（同步生成器）
 
         说明：当前实现为原型，先使用 `run` 获取完整响应，再按固定 `chunk_size` 切分并逐片返回。
         若后端 LLM 支持原生流式回调，可替换为真实流式实现。
 
+        Args:
+            user_message: 用户输入消息
+            session_id: Web 会话 ID，可选
+            auth_info: 会话认证信息，可选
+            chunk_size: 每片的字符数
+
         Yields:
             str: 响应片段
         """
-        full = self.run(user_message)
+        # 调用 run 获取完整响应，并传递会话信息
+        full = self.run(user_message, session_id=session_id, auth_info=auth_info)
 
         # 简单按字符切分为多段
         for i in range(0, len(full), chunk_size):
