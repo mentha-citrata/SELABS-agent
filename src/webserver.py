@@ -10,19 +10,28 @@
 
 import asyncio
 import json
+from pathlib import Path
 import uuid
 from typing import Dict
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 
 from .agent.agent import LabAgent
 
 app = FastAPI(title="SELABS Agent Web Prototype")
 
-# 挂载静态前端文件（根路径）
-app.mount("/", StaticFiles(directory="web", html=True), name="web")
+WEB_DIR = Path(__file__).resolve().parents[1] / "web"
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/chat.js")
+async def chat_js():
+    return FileResponse(WEB_DIR / "chat.js")
 
 # 简易内存会话存储：session_id -> asyncio.Queue
 SESSIONS: Dict[str, asyncio.Queue] = {}
