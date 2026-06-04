@@ -34,9 +34,15 @@ export function openAgentStream(sessionId, handlers = {}) {
   source.onmessage = (event) => {
     try {
       const payload = normalizeStreamEvent(JSON.parse(event.data))
+      if (payload.type === 'error') {
+        handlers.onError?.(new Error(payload.message))
+        source.close()
+        return
+      }
       handlers.onEvent?.(payload)
     } catch (error) {
       handlers.onError?.(error)
+      source.close()
     }
   }
 

@@ -59,6 +59,11 @@ def _format_sse_event(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
 
+def _format_done_sse_event() -> str:
+    """Serialize a dispatchable custom SSE done event."""
+    return "event: done\ndata: {}\n\n"
+
+
 def _extract_a2ui_blocks(text: str) -> tuple[str, list[dict[str, Any]]]:
     blocks: list[dict[str, Any]] = []
 
@@ -167,18 +172,14 @@ async def stream(session_id: str):
     queue = session_data["queue"]
 
     async def event_generator():
-        try:
-            while True:
-                item = await queue.get()
-                if item is None:
-                    continue
-                if item.get("type") == "stream_done":
-                    # 发送 done 事件并结束
-                    yield "event: done\n\n"
-                    break
-                yield _format_sse_event(item)
-        finally:
-            # 清理会话队列
-            SESSIONS.pop(session_id, None)
+        while True:
+            item = await queue.get()
+            if item is None:
+                continue
+            if item.get("type") == "stream_done":
+                # 发送 done 事件并结束；会话保存登录态，不随单次 stream 清理。
+                yield _format_done_sse_event()
+                break
+            yield _format_sse_event(item)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

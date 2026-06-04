@@ -11,8 +11,10 @@ for site_packages in (PROJECT_ROOT / ".venv" / "lib").glob("python*/site-package
 
 from src.webserver import (
     _format_sse_event,
+    _format_done_sse_event,
     _message_events_from_agent_text,
     _extract_a2ui_blocks,
+    SESSIONS,
 )
 
 
@@ -23,6 +25,12 @@ def test_format_sse_event_serializes_data_event():
     assert event.endswith("\n\n")
     payload = json.loads(event.removeprefix("data: ").strip())
     assert payload == {"type": "markdown_delta", "message_id": "m1", "content": "hello"}
+
+
+def test_format_done_sse_event_has_data_payload():
+    event = _format_done_sse_event()
+
+    assert event == "event: done\ndata: {}\n\n"
 
 
 def test_message_events_from_plain_text():
@@ -103,12 +111,24 @@ def test_invalid_a2ui_json_stays_in_markdown():
     assert "```a2ui" in markdown
 
 
+def test_session_store_survives_stream_completion_marker():
+    session_id = "test-session"
+    SESSIONS[session_id] = {"queue": None, "auth": {"is_authenticated": True}}
+
+    try:
+        assert session_id in SESSIONS
+    finally:
+        SESSIONS.pop(session_id, None)
+
+
 def main():
     test_format_sse_event_serializes_data_event()
+    test_format_done_sse_event_has_data_payload()
     test_message_events_from_plain_text()
     test_extract_a2ui_block_from_fenced_json()
     test_message_events_preserve_markdown_then_emit_ui_block()
     test_invalid_a2ui_json_stays_in_markdown()
+    test_session_store_survives_stream_completion_marker()
     print("structured SSE tests passed")
 
 
