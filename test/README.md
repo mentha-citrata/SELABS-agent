@@ -10,6 +10,8 @@ SELABS Agent 项目的完整测试套件，包括基础功能测试、集成流�
 | `test_integration.py` | 集成流程测试 | 8 | ~10s |
 | `test_report.py` | 测试报告生成 | - | ~5s |
 | `verify_project.py` | 项目结构验证 | - | ~2s |
+| `test_backend_full.py` | 后端接口完整测试 | - | ~30s |
+| `diagnose_backend.py` | 后端接口诊断脚本 | - | ~15s |
 
 ## 🚀 快速运行
 
@@ -29,6 +31,12 @@ python test/test_report.py
 
 # 验证项目结构
 python test/verify_project.py
+
+# 后端接口完整测试
+python test/test_backend_full.py
+
+# 后端接口诊断
+python test/diagnose_backend.py
 ```
 
 ## 📊 测试覆盖

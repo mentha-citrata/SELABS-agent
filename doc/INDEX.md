@@ -34,6 +34,12 @@
 - 性能优化方向
 - 扩展开发指南
 
+### [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md) - 后端接口测试总结
+记录最近一次后端接口验证结果，包含：
+- 登录与认证验证结果
+- Core API 可用性与权限限制
+- 后端技术栈与测试结论
+
 **阅读时间**: 25-35 分钟
 
 ## 🎯 快速导航
@@ -85,6 +91,7 @@
 ### 🐛 问题排查
 - [README.md - 故障排查](README.md#-故障排查)
 - [QUICKSTART.md - 常见问题](QUICKSTART.md#-常见问题)
+- [FINAL_TEST_REPORT.md](FINAL_TEST_REPORT.md)
 
 ## 💡 关键概念
 
