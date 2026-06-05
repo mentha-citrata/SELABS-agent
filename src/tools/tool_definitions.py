@@ -174,7 +174,7 @@ def _delete_json(path: str, params: Optional[dict[str, Any]] = None) -> dict:
 def login_user(user_number: str, password: str) -> dict:
     """用户登录
     
-    对应接口: POST /v1/user/login
+    对应接口: GET /v1/user/login
     
     Args:
         user_number: 用户工号或学号
@@ -187,7 +187,7 @@ def login_user(user_number: str, password: str) -> dict:
         "userNumber": user_number,
         "password": password,
     }
-    result = _post_json("/v1/user/login", payload)
+    result = _get_json("/v1/user/login", params=payload)
     
     # 如果登录成功，更新会话上下文中的认证信息
     if result.get("status") == "success" and result.get("response", {}).get("data"):
