@@ -2,8 +2,8 @@
 
 提供三个接口：
 - POST /api/agent/session -> 创建会话，返回 session_id
-- POST /api/agent/send -> 发送用户消息（将触发 Agent 处理并把分片放入会话队列）
-- GET  /api/agent/stream -> 以 SSE 方式消费会话队列
+- POST /api/agent/send -> 发送用户消息（将触发 Agent 处理并把结构化事件放入会话队列）
+- GET  /api/agent/stream -> 以 SSE 方式消费结构化事件
 
 此模块为原型实现，使用内存会话队列，不适合生产环境（无持久化）。
 """
@@ -11,8 +11,9 @@
 import asyncio
 import json
 from pathlib import Path
+import re
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
@@ -37,8 +38,61 @@ async def chat_js():
 # 会话结构：session_id -> {queue: asyncio.Queue, auth: {...}}
 SESSIONS: Dict[str, Dict[str, Any]] = {}
 
-# 单例 Agent
-AGENT = LabAgent()
+# 单例 Agent，按需懒加载，避免导入 webserver 时强制要求 LLM 配置。
+AGENT: Optional[LabAgent] = None
+
+
+def _get_agent() -> LabAgent:
+    """获取单例 Agent，仅在实际处理用户消息时初始化。"""
+    global AGENT
+
+    if AGENT is None:
+        AGENT = LabAgent()
+
+    return AGENT
+
+
+A2UI_BLOCK_RE = re.compile(r"```a2ui\s*(\{.*?\})\s*```", re.DOTALL)
+
+
+def _format_sse_event(event: dict[str, Any]) -> str:
+    return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+
+def _format_done_sse_event() -> str:
+    """Serialize a dispatchable custom SSE done event."""
+    return "event: done\ndata: {}\n\n"
+
+
+def _extract_a2ui_blocks(text: str) -> tuple[str, list[dict[str, Any]]]:
+    blocks: list[dict[str, Any]] = []
+
+    def replace(match: re.Match[str]) -> str:
+        raw = match.group(1)
+        try:
+            block = json.loads(raw)
+        except json.JSONDecodeError:
+            return match.group(0)
+
+        if isinstance(block, dict) and block.get("kind") == "form":
+            blocks.append(block)
+            return ""
+
+        return match.group(0)
+
+    markdown = A2UI_BLOCK_RE.sub(replace, text).strip()
+    return markdown, blocks
+
+
+def _message_events_from_agent_text(text: str, message_id: Optional[str] = None):
+    resolved_id = message_id or str(uuid.uuid4())
+    markdown, blocks = _extract_a2ui_blocks(text)
+    yield {"type": "message_start", "message_id": resolved_id}
+    if markdown:
+        yield {"type": "markdown_delta", "message_id": resolved_id, "content": markdown}
+    for block in blocks:
+        yield {"type": "ui_block", "message_id": resolved_id, "block": block}
+    yield {"type": "message_done", "message_id": resolved_id}
 
 
 @app.post("/api/agent/session")
@@ -87,22 +141,44 @@ async def send_message(payload: Request):
     queue = session_data["queue"]
     auth_info = session_data["auth"]
 
-    # 在后台任务中运行 Agent 的流式生成器并将片段放入队列
+    agent_message = message if isinstance(message, str) else json.dumps(message, ensure_ascii=False)
+
+    # 在后台任务中运行 Agent 并将结构化事件放入队列
     async def _run_and_push():
         loop = asyncio.get_running_loop()
+        try:
+            if (
+                isinstance(message, dict)
+                and message.get("kind") == "a2ui_form_submit"
+                and message.get("form_id") == "seat_reservation_demo"
+            ):
+                values = message.get("values", {})
+                response = (
+                    "已收到 demo 表单提交，结构化数据已回传给 Agent API。\n\n"
+                    f"- 表单 ID：{message.get('form_id', 'unknown')}\n"
+                    f"- 字段数量：{len(values) if isinstance(values, dict) else 0}\n"
+                    "- 非 demo 表单会继续转发给 LabAgent，用于接入预约、审批或报修等业务流程。"
+                )
+            elif "A2UI_DEMO" in agent_message or "预约机位表单" in agent_message:
+                response = """我已生成一个机位预约表单，请填写后提交。
 
-        def gen():
-            for chunk in AGENT.run_stream(message, session_id=session_id, auth_info=auth_info):
-                yield chunk
-
-        for piece in await loop.run_in_executor(None, lambda: list(gen())):
-            await queue.put({"data": piece})
-
-        # 同步认证信息回 SESSIONS（在 Agent 执行完成后）
-        _sync_session_auth(session_id)
-
-        # 标记结束
-        await queue.put({"done": True})
+```a2ui
+{"kind":"form","id":"seat_reservation_demo","title":"预约机位","description":"选择房间、时间段和机位后提交。","submitLabel":"提交预约","fields":[{"name":"roomName","label":"房间","type":"select","required":true,"options":["A101","B203","C305"]},{"name":"startTime","label":"开始时间","type":"datetime","required":true},{"name":"endTime","label":"结束时间","type":"datetime","required":true},{"name":"seatId","label":"机位 ID","type":"number","required":true},{"name":"notes","label":"备注","type":"textarea"}]}
+```
+"""
+            else:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: _get_agent().run(agent_message, session_id=session_id, auth_info=auth_info),
+                )
+            for event in _message_events_from_agent_text(response):
+                await queue.put(event)
+        except Exception as error:
+            await queue.put({"type": "error", "message": str(error)})
+        finally:
+            # 同步认证信息回 SESSIONS（在 Agent 执行完成后）
+            _sync_session_auth(session_id)
+            await queue.put({"type": "stream_done"})
 
     asyncio.create_task(_run_and_push())
 
@@ -118,20 +194,14 @@ async def stream(session_id: str):
     queue = session_data["queue"]
 
     async def event_generator():
-        try:
-            while True:
-                item = await queue.get()
-                if item is None:
-                    continue
-                if item.get("done"):
-                    # 发送 done 事件并结束
-                    yield "event: done\n\n"
-                    break
-                # 发送数据片段为 SSE data
-                data = json.dumps({"data": item.get("data")})
-                yield f"data: {data}\n\n"
-        finally:
-            # 清理会话队列
-            SESSIONS.pop(session_id, None)
+        while True:
+            item = await queue.get()
+            if item is None:
+                continue
+            if item.get("type") == "stream_done":
+                # 发送 done 事件并结束；会话保存登录态，不随单次 stream 清理。
+                yield _format_done_sse_event()
+                break
+            yield _format_sse_event(item)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
