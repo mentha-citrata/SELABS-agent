@@ -42,6 +42,27 @@
 
 **阅读时间**: 25-35 分钟
 
+### [AGENT_INTEGRATION_TEST_REPORT.md](AGENT_INTEGRATION_TEST_REPORT.md) - Agent 与后端 API 集成测试报告
+记录 LangGraph Agent 与后端 API 的完整集成验证结果，包含：
+- Agent 功能验证（工具调用、认证、响应处理）
+- 6 个集成测试用例的详细结果
+- 关键问题修复记录（API URL、Token Header、字段名）
+- 统计数据和性能指标
+- 后续改进建议
+
+**状态**: ✅ 全部通过 (6/6 测试成功)  
+**阅读时间**: 15-20 分钟
+
+### [AGENT_INTEGRATION_SUMMARY.md](AGENT_INTEGRATION_SUMMARY.md) - Agent API 集成验证完成总结
+快速查看集成验证的核心成果，包含：
+- 验证状态和测试结果概览
+- 3 个关键问题的修复总结
+- 现在可以做什么
+- 后续步骤
+
+**推荐** →  首先阅读此文档获得整体认识  
+**阅读时间**: 3-5 分钟
+
 ## 🎯 快速导航
 
 ### 我是新用户，想快速开始

@@ -86,7 +86,7 @@ def _request_json(
     # 从会话上下文获取认证令牌（如果有的话）
     auth_info = _get_session_auth_info()
     if auth_info.get("auth_token"):
-        headers["Authorization"] = f"Bearer {auth_info['auth_token']}"
+        headers["satoken"] = auth_info['auth_token']
 
     request = Request(
         url,
@@ -202,7 +202,7 @@ def login_user(user_number: str, password: str) -> dict:
             auth_info["is_authenticated"] = True
             auth_info["user_id"] = user_data.get("id")
             auth_info["user_number"] = user_data.get("userNumber")
-            auth_info["auth_token"] = user_data.get("token") or user_data.get("accessToken")
+            auth_info["auth_token"] = user_data.get("tokenValue") or user_data.get("token") or user_data.get("accessToken")
             
             # 更新会话上下文
             session_context["auth_info"] = auth_info
