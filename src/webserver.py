@@ -2,8 +2,8 @@
 
 提供三个接口：
 - POST /api/agent/session -> 创建会话，返回 session_id
-- POST /api/agent/send -> 发送用户消息（将触发 Agent 处理并把分片放入会话队列）
-- GET  /api/agent/stream -> 以 SSE 方式消费会话队列
+- POST /api/agent/send -> 发送用户消息（将触发 Agent 处理并把结构化事件放入会话队列）
+- GET  /api/agent/stream -> 以 SSE 方式消费结构化事件
 
 此模块为原型实现，使用内存会话队列，不适合生产环境（无持久化）。
 """
@@ -141,14 +141,36 @@ async def send_message(payload: Request):
     queue = session_data["queue"]
     auth_info = session_data["auth"]
 
-    # 在后台任务中运行 Agent 的流式生成器并将片段放入队列
+    agent_message = message if isinstance(message, str) else json.dumps(message, ensure_ascii=False)
+
+    # 在后台任务中运行 Agent 并将结构化事件放入队列
     async def _run_and_push():
         loop = asyncio.get_running_loop()
         try:
-            response = await loop.run_in_executor(
-                None,
-                lambda: _get_agent().run(message, session_id=session_id, auth_info=auth_info),
-            )
+            if (
+                isinstance(message, dict)
+                and message.get("kind") == "a2ui_form_submit"
+                and message.get("form_id") == "seat_reservation_demo"
+            ):
+                values = message.get("values", {})
+                response = (
+                    "已收到 demo 表单提交，结构化数据已回传给 Agent API。\n\n"
+                    f"- 表单 ID：{message.get('form_id', 'unknown')}\n"
+                    f"- 字段数量：{len(values) if isinstance(values, dict) else 0}\n"
+                    "- 非 demo 表单会继续转发给 LabAgent，用于接入预约、审批或报修等业务流程。"
+                )
+            elif "A2UI_DEMO" in agent_message or "预约机位表单" in agent_message:
+                response = """我已生成一个机位预约表单，请填写后提交。
+
+```a2ui
+{"kind":"form","id":"seat_reservation_demo","title":"预约机位","description":"选择房间、时间段和机位后提交。","submitLabel":"提交预约","fields":[{"name":"roomName","label":"房间","type":"select","required":true,"options":["A101","B203","C305"]},{"name":"startTime","label":"开始时间","type":"datetime","required":true},{"name":"endTime","label":"结束时间","type":"datetime","required":true},{"name":"seatId","label":"机位 ID","type":"number","required":true},{"name":"notes","label":"备注","type":"textarea"}]}
+```
+"""
+            else:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: _get_agent().run(agent_message, session_id=session_id, auth_info=auth_info),
+                )
             for event in _message_events_from_agent_text(response):
                 await queue.put(event)
         except Exception as error:

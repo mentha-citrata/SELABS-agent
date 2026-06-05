@@ -134,7 +134,15 @@ proxy: {
 AggregateError [ECONNREFUSED]
 ```
 
-这表示 Vite 代理连接不到目标 Agent API 端口。注意：当前 SSE 是原型实现，先调用 `agent.run()` 得到完整回复，再按固定字符数分片返回。
+这表示 Vite 代理连接不到目标 Agent API 端口。当前 SSE 会返回结构化事件：`message_start`、`markdown_delta`、`ui_block`、`message_done`，前端据此渲染 Markdown 和嵌入式 A2UI 表单。
+
+验证 A2UI 表单：
+
+1. 启动 Agent API 和 Vue 前端。
+2. 在输入框发送 `预约机位表单`。
+3. 确认回复中出现可填写表单。
+4. 先直接提交，确认必填字段错误会显示在字段下方。
+5. 填写后提交表单，确认表单变成只读摘要，右侧上下文面板出现最近表单信息，并继续把结构化提交发回 Agent。
 
 ## 5. 验证项目
 
